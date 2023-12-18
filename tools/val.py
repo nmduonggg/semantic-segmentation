@@ -1,3 +1,5 @@
+from matplotlib.pyplot import summer
+from tensorboard import summary
 import torch
 import argparse
 import yaml
@@ -31,6 +33,48 @@ def evaluate(model, dataloader, device):
     f1, mf1 = metrics.compute_f1()
     
     return acc, macc, f1, mf1, ious, miou
+
+def evaluate_rc(model, dataloader, device):
+    print('Evaluating...')
+    model.eval()
+    metrics_r = Metrics(2, dataloader.dataset.ignore_label, device)
+    metrics_c = Metrics(2, dataloader.dataset.ignore_label, device)
+
+    for images, labels in tqdm(dataloader):
+        images = images.to(device)
+        lbr, lbc = [l.to(device) for l in labels]
+        rpreds, cpreds = model(images)
+        rpreds = rpreds.softmax(dim=1)
+        cpreds = cpreds.softmax(dim=1)
+        
+        metrics_r.update(rpreds, lbr)
+        metrics_c.update(cpreds, lbc)
+    
+    summary_metrics = {
+        'macc': {},
+        'mf1': {},
+        'miou': {}
+    }
+    keys = ['row', 'col']
+    for i, m in enumerate([metrics_r, metrics_c]):
+        key_ = keys[i]
+        
+        ious, miou = m.compute_iou()
+        acc, macc = m.compute_pixel_acc()
+        f1, mf1 = m.compute_f1()
+        
+        summary_metrics['macc'][key_] = macc
+        summary_metrics['mf1'][key_] = mf1
+        summary_metrics['miou'][key_] = miou
+    
+    final_metrics = dict()
+    for k in summary_metrics:
+        metric_dict = summary_metrics[k]
+        mean_ = sum([metric_dict[x] for x in metric_dict]) / 2
+        metric_dict['mean'] = mean_
+        final_metrics[k] = metric_dict
+    
+    return final_metrics, final_metrics['miou']['mean']
 
 
 @torch.no_grad()

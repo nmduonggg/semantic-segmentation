@@ -6,7 +6,7 @@ from semseg.models.layers import trunc_normal_
 
 
 class BaseModel(nn.Module):
-    def __init__(self, backbone: str = 'MiT-B0', num_classes: int = 19) -> None:
+    def __init__(self, backbone: str = 'MiT-B0', num_classes: int = 2) -> None:
         super().__init__()
         backbone, variant = backbone.split('-')
         self.backbone = eval(backbone)(variant)
@@ -27,5 +27,6 @@ class BaseModel(nn.Module):
             nn.init.zeros_(m.bias)
 
     def init_pretrained(self, pretrained: str = None) -> None:
-        if pretrained:
-            self.backbone.load_state_dict(torch.load(pretrained, map_location='cpu'), strict=False)
+        if pretrained or pretrained != '':
+            print(f"[INFO] LOAD FROM PRETRAINED {pretrained}")
+            self.backbone.load_state_dict(torch.load(pretrained, map_location='cpu'), strict=True)

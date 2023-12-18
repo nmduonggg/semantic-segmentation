@@ -1,6 +1,6 @@
 import torch
 import math
-from torch.optim.lr_scheduler import _LRScheduler
+from torch.optim.lr_scheduler import _LRScheduler, ReduceLROnPlateau
 
 
 class PolyLR(_LRScheduler):
@@ -79,17 +79,17 @@ class WarmupCosineLR(WarmupLR):
         
         return self.eta_ratio + (1 - self.eta_ratio) * (1 + math.cos(math.pi * self.last_epoch / real_max_iter)) / 2
 
+__all__ = ['polylr', 'warmuppolylr', 'warmupcosinelr', 'warmupsteplr', 'ReduceLROnPlateau']
 
 
-__all__ = ['polylr', 'warmuppolylr', 'warmupcosinelr', 'warmupsteplr']
-
-
-def get_scheduler(scheduler_name: str, optimizer, max_iter: int, power: int, warmup_iter: int, warmup_ratio: float):
+def get_scheduler(scheduler_name: str, optimizer, max_iter: int=100, power: int=1, warmup_iter: int=50, warmup_ratio: float=0.1, patience: int=10):
     assert scheduler_name in __all__, f"Unavailable scheduler name >> {scheduler_name}.\nAvailable schedulers: {__all__}"
     if scheduler_name == 'warmuppolylr':
         return WarmupPolyLR(optimizer, power, max_iter, warmup_iter, warmup_ratio, warmup='linear')
     elif scheduler_name == 'warmupcosinelr':
         return WarmupCosineLR(optimizer, max_iter, warmup_iter=warmup_iter, warmup_ratio=warmup_ratio)
+    elif scheduler_name == 'ReduceLROnPlateau':
+        return ReduceLROnPlateau(optimizer, patience=patience)
     return PolyLR(optimizer, max_iter)
 
 
